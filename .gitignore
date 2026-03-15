@@ -1,0 +1,36 @@
+# Entornos virtuales
+venv/
+.venv/
+env/
+bin/
+include/
+lib/
+share/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Datos y datasets (No subir archivos pesados)
+data/
+datasets/
+*.csv
+*.json
+*.parquet
+*.h5
+*.pickle
+*.npy
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# IDEs y Editores
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Variables de entorno (Seguridad)
+.env
