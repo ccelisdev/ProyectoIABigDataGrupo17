@@ -34,3 +34,9 @@ datasets/
 
 # Variables de entorno (Seguridad)
 .env
+
+# Metadatos de macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
