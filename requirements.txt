@@ -1,0 +1,14 @@
+# Backend y API REST
+fastapi
+uvicorn[standard]
+
+# Orquestación RAG y Embeddings locales
+langchain
+langchain-community
+sentence-transformers
+
+# Base de datos vectorial
+qdrant-client
+
+# Variables de entorno y utilidades
+python-dotenv
