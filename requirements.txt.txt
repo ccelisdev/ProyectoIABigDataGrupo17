@@ -1,0 +1,8 @@
+#cliente python para conectarse a Qdrant(crear colecciones, insertar y consultar embeddings)
+qdrant-client
+
+#Lo utilizamos para generar emebeddings con el modelo all-MiniLM-L6-v2.
+sentence-transformers
+
+#Para leer y extraer texto de documentos PDF durante la ingesta. 
+pdfplumber
