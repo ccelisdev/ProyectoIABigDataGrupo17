@@ -1,8 +1,18 @@
-#cliente python para conectarse a Qdrant(crear colecciones, insertar y consultar embeddings)
-qdrant-client
+# Mantener para compatibilidad Mac Intel (Mario)
+numpy<2
+torch==2.2.2
+transformers==4.38.2
+sentence-transformers==2.6.0
 
-#Lo utilizamos para generar emebeddings con el modelo all-MiniLM-L6-v2.
-sentence-transformers
+# Backend y RAG
+fastapi
+uvicorn[standard]
+langchain
+langchain-community
+langchain-ollama
+python-dotenv
 
-#Para leer y extraer texto de documentos PDF durante la ingesta. 
+# Base de datos y PDFs (Katherin)
+qdrant-client==1.9.0
 pdfplumber
+pypdf
