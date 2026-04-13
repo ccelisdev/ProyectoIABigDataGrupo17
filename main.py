@@ -1,6 +1,9 @@
 from fastapi import FastAPI
-from src.embeddings import MotorEmbeddings
+from langchain_ollama import OllamaLLM
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_community.vectorstores import Qdrant
 from src.database import GestorVectorial
+from src.embeddings import MotorEmbeddings
 
 app = FastAPI(
     title="API - Asistente Empresarial RAG",
@@ -8,10 +11,33 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# Cargamos las piezas de Mario
-motor   = MotorEmbeddings().obtener_modelo()
-cliente = GestorVectorial().obtener_cliente()
-COLECCION = "documentos_empresa"
+print("⏳ Cargando sistema RAG...")
+gestor     = GestorVectorial()
+embeddings = MotorEmbeddings().obtener_modelo()
+llm        = OllamaLLM(model="llama3:8b")
+
+vectorstore = Qdrant(
+    client=gestor.obtener_cliente(),
+    collection_name=gestor.nombre_coleccion,
+    embeddings=embeddings
+)
+
+retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+
+template = """Eres un asistente experto. Usa este contexto para responder.
+Si no lo sabes, di que no está en el documento, no inventes.
+
+CONTEXTO:
+{context}
+
+PREGUNTA: {question}
+
+RESPUESTA:"""
+
+prompt = ChatPromptTemplate.from_template(template)
+cadena = prompt | llm
+
+print("✅ ¡Sistema listo!")
 
 @app.get("/")
 def read_root():
@@ -20,28 +46,16 @@ def read_root():
 @app.post("/chat")
 def chat_endpoint(pregunta: str):
 
-    # Paso 1: convertir pregunta a números
-    pregunta_en_numeros = motor.embed_query(pregunta)
+    docs = retriever.invoke(pregunta)
+    contexto = "\n\n".join([doc.page_content for doc in docs])
 
-    # Paso 2: buscar en Qdrant los fragmentos más relevantes
-    resultados = cliente.search(
-        collection_name=COLECCION,
-        query_vector=pregunta_en_numeros,
-        limit=3
-    )
+    respuesta = cadena.invoke({
+        "context": contexto,
+        "question": pregunta
+    })
 
-    # Paso 3: extraer el texto
-    fuentes = []
-    for r in resultados:
-        fuentes.append({
-            "texto":      r.payload["page_content"],
-            "fuente":     r.payload.get("source", "desconocida"),
-            "relevancia": round(r.score, 2)
-        })
-
-    # Paso 4: devolver respuesta real
     return {
         "pregunta": pregunta,
-        "respuesta": fuentes[0]["texto"] if fuentes else "No encontré información relevante.",
-        "fuentes":   fuentes
+        "respuesta": respuesta,
+        "fuentes": [doc.page_content[:200] for doc in docs]
     }
