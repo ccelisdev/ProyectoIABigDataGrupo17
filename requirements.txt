@@ -16,3 +16,7 @@ python-dotenv
 qdrant-client==1.9.0
 pdfplumber
 pypdf
+
+# Base de datos NoSQL (Conversaciones)
+motor
+pymongo

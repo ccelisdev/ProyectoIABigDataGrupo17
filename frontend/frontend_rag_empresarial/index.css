@@ -1,0 +1,198 @@
+/* index.css */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box; 
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden; /* Evita que la página entera haga scroll */
+}
+
+
+/* --- Contenedores de Alto Nivel --- */
+
+.app-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    background-color: #242424;
+    color: white;
+}
+
+.layout-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* --- Header y Usuario --- */
+
+.main-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    position: relative;
+    height: 50px;
+    background-color: #343541;
+    margin: 10px;
+    padding: 1rem;
+    border-radius: 12px;
+}
+
+.main-header h1 {
+    position: absolute;
+    left: 50%;                 /* Lo mueve al centro horizontal */
+    transform: translateX(-50%); /* Lo centra exactamente sobre su propio eje */
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+}
+
+.user-info strong {
+    border-left: 100px;
+}
+
+.user-info span {
+}
+
+/* --- Barra Lateral (Sidebar) --- */
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 280px; /* Ancho fijo para el menú lateral */
+    margin: 10px;
+    padding: 1rem;
+    background-color: #343541;
+    border-radius: 12px;
+}
+
+.btn-new-chat {
+    margin-bottom: 20px;
+    padding: 10px 15px;
+    background-color: #40414f;
+    color: white;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.btn-new-chat:hover {
+    background-color: #4d4d5e;
+}
+
+.history ul {
+    display: flex;
+    flex-direction: column;
+    width: 100%; /* Ocupar todo el ancho del sidebar */
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 0.5rem;
+}
+
+.history li {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #d1d1d1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Evita que el texto largo rompa el diseño */
+    transition: all 0.2s;
+}
+
+.history li:hover {
+    background-color: #40414f;
+}
+
+/* Estilo para la ficha de chat seleccionada */
+.history li.active-chat {
+    background-color: #242424;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+}
+
+.no-history {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 10px;
+}
+/* --- Área de Chat Principal --- */
+
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    align-items: center;
+    background-color: #343541;
+    margin: 10px;
+    border-radius: 12px
+}
+
+.chat {
+    flex: 1;
+    width: 100%;
+    max-width: 800px;
+    overflow-y: auto;
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* --- Mensajes --- */
+
+.message-rag {
+}
+
+.message-rag p {
+}
+
+.message-user {
+}
+
+/* --- Input y Formulario (Footer) --- */
+
+.chat-input {
+    display: flex;
+    align-items: center;
+    height: auto;
+    width: 100%;
+    padding: 10px 0
+}
+
+.chat-form {
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+    max-width: 800px;
+    padding: 1rem;
+    gap: 0.5rem
+}
+
+.chat-form textarea {
+flex: 1;
+padding: 10px;
+color: white;         /* Cambiado a blanco para tu fondo oscuro */
+background-color: #40414f; 
+border: 1px solid rgba(255,255,255,0.1);
+border-radius: 8px;
+field-sizing: content;
+min-height: 40px;
+max-height: 200px;
+overflow-y: auto;
+font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+line-height: 1.5;
+}
