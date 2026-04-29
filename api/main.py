@@ -24,8 +24,8 @@ from src.embeddings import MotorEmbeddings
 load_dotenv()
 app = FastAPI(
     title="API - Asistente Empresarial RAG",
-    description="Punto de entrada principal del TFG - Sistema RAG con historial en MongoDB",
-    version="1.0.0"
+    description="Punto de entrada principal del TFG - Sistema RAG con historial y Feedback",
+    version="1.1.0"
 )
 
 # CORS: Permite que React (puerto 5173) hable con esta API (puerto 8000)
@@ -71,11 +71,16 @@ prompt = ChatPromptTemplate.from_template(template)
 cadena = prompt | llm
 print("✅ Sistema listo para procesar consultas.")
 
-# --- MODELOS DE DATOS ---
+# --- MODELOS DE DATOS (SCHEMAS) ---
 class ChatResponse(BaseModel):
     respuesta: str
     conversation_id: str
     fuentes: List[dict] = [] # Estructura: {"archivo": "nombre.pdf", "texto": "contenido"}
+
+class FeedbackSchema(BaseModel):
+    conversation_id: str
+    message_index: int  # Para saber a qué mensaje damos feedback
+    valor: str          # "like" o "dislike"
 
 # --- ENDPOINTS ---
 
@@ -155,5 +160,22 @@ async def chat_principal(
         "fuentes": citas
     }
 
+# --- ENDPOINT DE FEEDBACK (IMPLEMENTADO POR MARIO) ---
+@app.post("/chat/feedback")
+async def save_feedback(data: FeedbackSchema):
+    try:
+        # Usamos la notación de punto para actualizar el mensaje específico dentro de la lista
+        # messages.index.feedback
+        field = f"messages.{data.message_index}.feedback"
+        
+        await conversations_collection.update_one(
+            {"_id": ObjectId(data.conversation_id)},
+            {"$set": {field: data.valor}}
+        )
+        return {"status": "ok", "mensaje": f"Feedback {data.valor} guardado correctamente"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al guardar feedback: {str(e)}")
+
+# --- EJECUCIÓN ---
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

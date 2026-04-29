@@ -1,13 +1,13 @@
-export const Chat = ({messages, input, setInput, onSend, onKeyDown}) => {
+export const Chat = ({messages, input, setInput, onSend, onKeyDown, onFeedback}) => {
     return(
         <main className="chat-container">
             <article className="chat">
                 {messages.map((msg, index) => (
-                    <section key={index} className={`message-${msg.role}`}>
-                        {/* Texto principal del mensaje */}
+                    <section key={index} className={`message-${msg.role}`} style={{ marginBottom: '20px' }}>
+                        {/* 1. TEXTO DEL MENSAJE */}
                         <p>{msg.text}</p>
 
-                        {/* --- TAREA DE MARIO: MOSTRAR FUENTES EXPANDIBLES --- */}
+                        {/* 2. SECCIÓN DE FUENTES (Solo si es el bot y hay fuentes) */}
                         {msg.role === "bot" && msg.fuentes && msg.fuentes.length > 0 && (
                             <div className="sources-wrapper" style={{
                                 marginTop: '12px',
@@ -51,6 +51,52 @@ export const Chat = ({messages, input, setInput, onSend, onKeyDown}) => {
                                         ))}
                                     </div>
                                 </details>
+                            </div>
+                        )}
+
+                        {/* 3. SECCIÓN DE FEEDBACK (Pulgares) - IMPLEMENTADO POR MARIO */}
+                        {msg.role === "bot" && index !== 0 && (
+                            <div className="feedback-section" style={{
+                                display: 'flex',
+                                gap: '12px',
+                                marginTop: '10px',
+                                opacity: '0.7'
+                            }}>
+                                <button 
+                                    onClick={() => onFeedback && onFeedback(index, 'like')}
+                                    style={{ 
+                                        border: 'none', 
+                                        background: 'none', 
+                                        cursor: 'pointer', 
+                                        fontSize: '1.1rem',
+                                        transition: 'transform 0.2s'
+                                    }}
+                                    title="Respuesta útil"
+                                    onMouseOver={(e) => e.target.style.transform = 'scale(1.2)'}
+                                    onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                                >
+                                    👍
+                                </button>
+                                <button 
+                                    onClick={() => onFeedback && onFeedback(index, 'dislike')}
+                                    style={{ 
+                                        border: 'none', 
+                                        background: 'none', 
+                                        cursor: 'pointer', 
+                                        fontSize: '1.1rem',
+                                        transition: 'transform 0.2s'
+                                    }}
+                                    title="Respuesta no útil"
+                                    onMouseOver={(e) => e.target.style.transform = 'scale(1.2)'}
+                                    onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                                >
+                                    👎
+                                </button>
+                                {msg.feedback && (
+                                    <span style={{ fontSize: '0.7rem', color: '#059669', alignSelf: 'center' }}>
+                                        ¡Gracias por tu feedback!
+                                    </span>
+                                )}
                             </div>
                         )}
                     </section>

@@ -55,7 +55,6 @@ function App() {
 
             const data = await response.json();
 
-            
             // Guardamos la respuesta y la lista de fuentes (archivo y texto)
             const botMessage = { 
                 role: "bot", 
@@ -76,6 +75,34 @@ function App() {
                 text: "Error de conexión con el servidor.",
                 fuentes: [] 
             }]);
+        }
+    };
+
+    // --- FUNCIÓN DE FEEDBACK (IMPLEMENTADA POR MARIO) ---
+    const handleFeedback = async (index, valor) => {
+        if (!currentConvId) return;
+
+        try {
+            await fetch(`${API_BASE_URL}/chat/feedback`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    conversation_id: currentConvId,
+                    message_index: index,
+                    valor: valor
+                })
+            });
+
+            // Actualizamos el estado local para que el componente Chat sepa que ya hay feedback
+            setMessages(prev => {
+                const newMessages = [...prev];
+                newMessages[index] = { ...newMessages[index], feedback: valor };
+                return newMessages;
+            });
+            
+            console.log(`Feedback ${valor} guardado para el mensaje ${index}`);
+        } catch (error) {
+            console.error("Error al enviar el feedback:", error);
         }
     };
 
@@ -125,6 +152,7 @@ function App() {
                     setInput={setInput}
                     onSend={handleSend}
                     onKeyDown={handleKeyDown}
+                    onFeedback={handleFeedback} // <-- Pasamos la función al componente Chat
                 />
             </div>
         </div>
