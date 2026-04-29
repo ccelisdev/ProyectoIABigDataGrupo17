@@ -3,9 +3,13 @@ import { Header } from "./Components/Header";
 import { Sidebar } from "./Components/Sidebar";
 import { Chat } from "./Components/Chat";
 
-const USER_NAME = "Juan Saldaña";
+const USER_NAME = "Juan Saldaña"; 
 const API_BASE_URL = "http://localhost:8000";
-const INITIAL_MESSAGE = { role: "bot", text: `Hola ${USER_NAME}, soy tu asistente. ¿En qué te puedo ayudar?` };
+const INITIAL_MESSAGE = { 
+    role: "bot", 
+    text: `Hola ${USER_NAME}, soy tu asistente. ¿En qué te puedo ayudar?`,
+    fuentes: [] 
+};
 
 function App() {
     const [messages, setMessages] = useState([INITIAL_MESSAGE]);
@@ -13,7 +17,7 @@ function App() {
     const [conversations, setConversations] = useState([]); // Para el Sidebar
     const [currentConvId, setCurrentConvId] = useState(null); // Trackea el chat activo
 
-    // 1. Cargar historial del Sidebar al iniciar (maneja usuario nuevo o existente)
+    // 1. Cargar historial del Sidebar al iniciar
     useEffect(() => {
         fetchConversations();
     }, []);
@@ -22,7 +26,7 @@ function App() {
         try {
             const res = await fetch(`${API_BASE_URL}/conversations/${USER_NAME}`);
             const data = await res.json();
-            setConversations(data); // Si no hay chats, vendrá un []
+            setConversations(data); 
         } catch (err) {
             console.error("Error al cargar historial:", err);
         }
@@ -45,14 +49,19 @@ function App() {
                 body: JSON.stringify({
                     user_name: USER_NAME,
                     pregunta: tempInput,
-                    conversation_id: currentConvId // Si es null, el backend crea uno nuevo
+                    conversation_id: currentConvId 
                 })
             });
 
             const data = await response.json();
 
-            // Actualizamos con la respuesta del RAG
-            const botMessage = { role: "bot", text: data.respuesta };
+            
+            // Guardamos la respuesta y la lista de fuentes (archivo y texto)
+            const botMessage = { 
+                role: "bot", 
+                text: data.respuesta,
+                fuentes: data.fuentes || [] // Captura las fuentes reales del backend
+            };
             setMessages(prev => [...prev, botMessage]);
 
             // Si era un chat nuevo, guardamos el ID y refrescamos el sidebar
@@ -62,7 +71,11 @@ function App() {
             }
         } catch (error) {
             console.error("Error conectando con el backend:", error);
-            setMessages(prev => [...prev, { role: "bot", text: "Error de conexión con el servidor." }]);
+            setMessages(prev => [...prev, { 
+                role: "bot", 
+                text: "Error de conexión con el servidor.",
+                fuentes: [] 
+            }]);
         }
     };
 
@@ -85,7 +98,8 @@ function App() {
         try {
             const res = await fetch(`${API_BASE_URL}/chat/${id}`);
             const data = await res.json();
-            setMessages(data); // Reemplaza los mensajes actuales con el historial de esa ficha
+            // data ya contiene los mensajes con sus respectivas fuentes de la DB
+            setMessages(data); 
             setCurrentConvId(id);
         } catch (err) {
             console.error("Error al cargar la conversación:", err);
@@ -103,7 +117,7 @@ function App() {
                 <Sidebar
                     onNewChat={handleNewChat}
                     conversations={conversations}
-                    onSelectChat={loadConversation} // Pasa esta función al Sidebar
+                    onSelectChat={loadConversation}
                 />
                 <Chat
                     messages={messages}

@@ -1,139 +1,159 @@
+import os
+import re
+from datetime import datetime
+from typing import List, Optional
+from bson import ObjectId
+from dotenv import load_dotenv
+import certifi 
+
+# FastAPI y Servidor
 from fastapi import FastAPI, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
-from datetime import datetime
-from typing import List, Optional
-from bson import ObjectId
-import os
-from dotenv import load_dotenv
+import uvicorn
 
-# --- CONFIGURACIÓN DE FASTAPI ---
+# Motor RAG (LangChain + Ollama + Qdrant)
+from langchain_ollama import OllamaLLM
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_community.vectorstores import Qdrant
+from src.database import GestorVectorial
+from src.embeddings import MotorEmbeddings
+
+# --- CONFIGURACIÓN ---
+load_dotenv()
 app = FastAPI(
     title="API - Asistente Empresarial RAG",
-    description="Backend con persistencia en MongoDB para chats independientes",
-    version="0.2.0"
+    description="Punto de entrada principal del TFG - Sistema RAG con historial en MongoDB",
+    version="1.0.0"
 )
 
-# Permitir CORS para que React pueda comunicarse con FastAPI
+# CORS: Permite que React (puerto 5173) hable con esta API (puerto 8000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], #cambiar esto a la URL del frontend
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- CONEXIÓN A MONGODB ---
-load_dotenv() # Carga las variables del archivo .env
-
-# Usamos la variable de entorno
+# --- BASES DE DATOS ---
 MONGO_URI = os.getenv("MONGO_URI")
-
-client = AsyncIOMotorClient(MONGO_URI)
-db = client.rag_database 
+client = AsyncIOMotorClient(MONGO_URI, tlsCAFile=certifi.where())
+db = client.rag_database
 conversations_collection = db.get_collection("conversations")
 
-# --- MODELOS DE DATOS (PYDANTIC) ---
-class MessageSchema(BaseModel):
-    role: str
-    text: str
-    timestamp: datetime = datetime.utcnow()
+# --- MOTOR IA (Configuración de Mario) ---
+print("⏳ Inicializando el cerebro del sistema (Llama 3 + Qdrant)...")
+gestor = GestorVectorial()
+embeddings = MotorEmbeddings().obtener_modelo()
+llm = OllamaLLM(model="llama3:8b")
 
+vectorstore = Qdrant(
+    client=gestor.obtener_cliente(),
+    collection_name=gestor.nombre_coleccion,
+    embeddings=embeddings
+)
+retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+
+# Prompt técnico para evitar alucinaciones
+template = """Eres un asistente experto de la empresa. Tu objetivo es ayudar a los empleados basándote exclusivamente en el contexto proporcionado.
+Si la información no está en el contexto, indica amablemente que no dispones de esos datos en los documentos oficiales.
+
+CONTEXTO:
+{context}
+
+PREGUNTA: {question}
+
+RESPUESTA:"""
+
+prompt = ChatPromptTemplate.from_template(template)
+cadena = prompt | llm
+print("✅ Sistema listo para procesar consultas.")
+
+# --- MODELOS DE DATOS ---
 class ChatResponse(BaseModel):
     respuesta: str
     conversation_id: str
-    fuentes: List[str] = []
+    fuentes: List[dict] = [] # Estructura: {"archivo": "nombre.pdf", "texto": "contenido"}
 
 # --- ENDPOINTS ---
 
 @app.get("/")
-def health_check():
-    return {"estado": "ok", "mensaje": "Servidor funcionando y conectado a DB"}
+def home():
+    return {"status": "online", "message": "API RAG Mario & Team funcionando"}
 
-# 1. Obtener la lista de conversaciones de un usuario
 @app.get("/conversations/{user_name}")
-async def get_user_conversations(user_name: str):
+async def listar_chats(user_name: str):
     cursor = conversations_collection.find({"user_name": user_name}).sort("last_updated", -1)
     chats = await cursor.to_list(length=50)
-    
-    return [
-        {
-            "id": str(chat["_id"]),
-            "title": chat.get("title", "Nueva conversación")
-        } for chat in chats
-    ]
+    return [{"id": str(chat["_id"]), "title": chat.get("title", "Chat")} for chat in chats]
 
-# 2. Obtener los mensajes de una conversación específica
 @app.get("/chat/{conversation_id}")
-async def get_chat_messages(conversation_id: str):
+async def obtener_historial(conversation_id: str):
     try:
         chat = await conversations_collection.find_one({"_id": ObjectId(conversation_id)})
         if not chat:
-            raise HTTPException(status_code=404, detail="Conversación no encontrada")
-        
-        # Convertir a formato compatible con JSON
-        messages = chat.get("messages", [])
-        for msg in messages:
-            if "timestamp" in msg:
-                msg["timestamp"] = msg["timestamp"].isoformat() # Convertir fecha a string
-        
-        return messages
-    except Exception:
-        raise HTTPException(status_code=400, detail="ID de conversación inválido")
+            raise HTTPException(status_code=404, detail="Chat no encontrado")
+        msgs = chat.get("messages", [])
+        for m in msgs:
+            if "timestamp" in m: m["timestamp"] = m["timestamp"].isoformat()
+        return msgs
+    except:
+        raise HTTPException(status_code=400, detail="ID inválido")
 
-# 3. Endpoint principal de Chat (Crea o actualiza "fichas")
 @app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(
+async def chat_principal(
     user_name: str = Body(...),
     pregunta: str = Body(...),
     conversation_id: Optional[str] = Body(None)
 ):
+    # 1. Registro del mensaje del usuario
     user_msg = {"role": "user", "text": pregunta, "timestamp": datetime.utcnow()}
     
     if conversation_id:
-        # CASO A: El usuario está en una conversación activa (Actualizar ficha)
-        oid = ObjectId(conversation_id)
-        await conversations_collection.update_one(
-            {"_id": oid},
-            {
-                "$push": {"messages": user_msg},
-                "$set": {"last_updated": datetime.utcnow()}
-            }
-        )
         current_id = conversation_id
+        await conversations_collection.update_one(
+            {"_id": ObjectId(current_id)},
+            {"$push": {"messages": user_msg}, "$set": {"last_updated": datetime.utcnow()}}
+        )
     else:
-        # CASO B: Es un nuevo chat (Crear nueva ficha)
         new_chat = {
             "user_name": user_name,
-            "title": pregunta[:40] + ("..." if len(pregunta) > 40 else ""),
+            "title": pregunta[:40] + "...",
             "messages": [user_msg],
             "last_updated": datetime.utcnow()
         }
-        result = await conversations_collection.insert_one(new_chat)
-        current_id = str(result.inserted_id)
+        res_db = await conversations_collection.insert_one(new_chat)
+        current_id = str(res_db.inserted_id)
 
-    # --- SIMULACIÓN MOTOR RAG ---
-    # Aquí es donde integrarás: res = rag_chain.invoke(pregunta)
-    respuesta_rag = f"Respuesta procesada para: {pregunta}. (Contexto: {current_id})"
-    fuentes_simuladas = ["doc_corporativo_1.pdf", "manual_empleado.docx"]
-    # ----------------------------
-
-    bot_msg = {"role": "bot", "text": respuesta_rag, "timestamp": datetime.utcnow()}
+    # 2. PROCESO RAG (Mario's Task)
+    docs = retriever.invoke(pregunta)
+    contexto_str = "\n\n".join([d.page_content for d in docs])
     
-    # Guardamos la respuesta del bot en la ficha correspondiente
+    # Llamada a Llama 3
+    ai_answer = cadena.invoke({"context": contexto_str, "question": pregunta})
+    
+    # Construcción de fuentes para el Frontend
+    citas = []
+    for d in docs:
+        citas.append({
+            "archivo": os.path.basename(d.metadata.get("source", "Doc")),
+            "texto": d.page_content
+        })
+
+    # 3. Guardar y Responder
+    bot_msg = {"role": "bot", "text": ai_answer, "fuentes": citas, "timestamp": datetime.utcnow()}
     await conversations_collection.update_one(
         {"_id": ObjectId(current_id)},
         {"$push": {"messages": bot_msg}}
     )
 
     return {
-        "respuesta": respuesta_rag,
+        "respuesta": ai_answer,
         "conversation_id": current_id,
-        "fuentes": fuentes_simuladas
+        "fuentes": citas
     }
 
-# --- EJECUCIÓN ---
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
