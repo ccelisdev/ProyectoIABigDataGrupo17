@@ -78,7 +78,7 @@ function App() {
         }
     };
 
-    // --- FUNCIÓN DE FEEDBACK (IMPLEMENTADA POR MARIO) ---
+    // --- FUNCIÓN DE FEEDBACK ---
     const handleFeedback = async (index, valor) => {
         if (!currentConvId) return;
 
@@ -136,7 +136,7 @@ function App() {
     return (
         <div className="app-wrapper">
             <Header
-                title="Asistente de Empresa Ficticia"
+                title="Asistente de IFP"
                 userName={USER_NAME}
                 userRole="Jefe"
             />
@@ -152,7 +152,7 @@ function App() {
                     setInput={setInput}
                     onSend={handleSend}
                     onKeyDown={handleKeyDown}
-                    onFeedback={handleFeedback} // <-- Pasamos la función al componente Chat
+                    onFeedback={handleFeedback} 
                 />
             </div>
         </div>

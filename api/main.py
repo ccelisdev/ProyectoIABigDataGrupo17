@@ -43,7 +43,7 @@ client = AsyncIOMotorClient(MONGO_URI, tlsCAFile=certifi.where())
 db = client.rag_database
 conversations_collection = db.get_collection("conversations")
 
-# --- MOTOR IA (Configuración de Mario) ---
+# --- MOTOR IA ---
 print("⏳ Inicializando el cerebro del sistema (Llama 3 + Qdrant)...")
 gestor = GestorVectorial()
 embeddings = MotorEmbeddings().obtener_modelo()
@@ -86,7 +86,7 @@ class FeedbackSchema(BaseModel):
 
 @app.get("/")
 def home():
-    return {"status": "online", "message": "API RAG Mario & Team funcionando"}
+    return {"status": "online", "message": "API RAG ok"}
 
 @app.get("/conversations/{user_name}")
 async def listar_chats(user_name: str):
@@ -132,7 +132,7 @@ async def chat_principal(
         res_db = await conversations_collection.insert_one(new_chat)
         current_id = str(res_db.inserted_id)
 
-    # 2. PROCESO RAG (Mario's Task)
+    # 2. PROCESO RAG
     docs = retriever.invoke(pregunta)
     contexto_str = "\n\n".join([d.page_content for d in docs])
     
@@ -164,14 +164,14 @@ async def chat_principal(
 @app.post("/chat/feedback")
 async def save_feedback(data: FeedbackSchema):
     try:
-        # Usamos la notación de punto para actualizar el mensaje específico dentro de la lista
-        # messages.index.feedback
-        field = f"messages.{data.message_index}.feedback"
+        #Definimos la ruta dinámica al campo feedback del mensaje específico
+        field_path = f"messages.{data.message_index}.feedback"
         
         await conversations_collection.update_one(
-            {"_id": ObjectId(data.conversation_id)},
-            {"$set": {field: data.valor}}
+            {"_id": ObjectId(data.conversation_id)}, #Convertimos el ID a ObjectId de Mongo
+            {"$set": {field_path: data.valor}} 
         )
+
         return {"status": "ok", "mensaje": f"Feedback {data.valor} guardado correctamente"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error al guardar feedback: {str(e)}")

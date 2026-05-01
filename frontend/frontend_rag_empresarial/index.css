@@ -34,32 +34,45 @@ html, body {
 .main-header {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    /* justify-content: flex-end; Esto asegura que los elementos hijos se muevan al final */
+    justify-content: flex-end; 
     position: relative;
-    height: 50px;
-    background-color: #343541;
-    margin: 10px;
-    padding: 1rem;
-    border-radius: 12px;
+    height: 55px;
+    padding: 0 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .main-header h1 {
+    /* POSICIONAMIENTO CENTRAL ABSOLUTO */
     position: absolute;
-    left: 50%;                 /* Lo mueve al centro horizontal */
-    transform: translateX(-50%); /* Lo centra exactamente sobre su propio eje */
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%); /* Centrado perfecto en ambos ejes */
+    border: 2px solid #1DA1F2; 
+    padding: 5px 12px;
+    border-radius:8px;
+    font-size: 1.5rem;
+    background-color: transparent;
+    color: #e0e7eb;
+    white-space: nowrap;
+    z-index: 1; /* Asegura que el título esté por encima si hay solapamiento */
 }
 
 .user-info {
     display: flex;
     flex-direction: column;
-    text-align: right;
+    text-align: right; /* Alineamos el texto a la derecha */
+    /* No necesita margen auto aquí porque el contenedor ya tiene flex-end */
 }
 
 .user-info strong {
-    border-left: 100px;
+    color: #1DA1F2; /* Nombre en azul Twitter para resaltar */
+    font-size: 0.9rem;
 }
 
 .user-info span {
+    font-size: 0.75rem;
+    color: #9ca3af; /* Color gris para el rol */
 }
 
 /* --- Barra Lateral (Sidebar) --- */
@@ -77,17 +90,18 @@ html, body {
 .btn-new-chat {
     margin-bottom: 20px;
     padding: 10px 15px;
-    background-color: #40414f;
+    background-color: transparent;   
+    border: 1px solid #1DA1F2;
     color: white;
-    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 8px;
     cursor: pointer;
     font-weight: 500;
-    transition: background 0.2s;
+    transition: all 0.2s ease;
 }
 
 .btn-new-chat:hover {
-    background-color: #4d4d5e;
+    background-color: rgba(29, 161, 242, 0.1);
+    box-shadow: 0 0 10px rgba(29, 161, 242, 0.2);
 }
 
 .history ul {
@@ -102,26 +116,32 @@ html, body {
 
 .history li {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     border-radius: 8px;
     cursor: pointer;
     font-size: 0.9rem;
     color: #d1d1d1;
+    margin-bottom: 4px;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* Evita que el texto largo rompa el diseño */
-    transition: all 0.2s;
+    text-overflow: ellipsis;
+    transition: all 0.2s ease;
+    border: 1px solid transparent; /* Evita saltos visuales al activar el borde */
 }
 
+/* Efecto Hover: Azul sutil */
 .history li:hover {
-    background-color: #40414f;
+    background-color: rgba(29, 161, 242, 0.1);
+    color: #1DA1F2;
 }
 
-/* Estilo para la ficha de chat seleccionada */
+/* Estilo para la ficha de chat seleccionada*/
 .history li.active-chat {
-    background-color: #242424;
-    border: 1px solid rgba(255,255,255,0.1);
-    color: white;
+    background-color: #1DA1F2; 
+    color: white;              
+    font-weight: 600;
+    border: 1px solid #1DA1F2;
+    box-shadow: 0 4px 12px rgba(29, 161, 242, 0.3);
 }
 
 .no-history {
@@ -185,7 +205,7 @@ html, body {
 .chat-form textarea {
 flex: 1;
 padding: 10px;
-color: white;         /* Cambiado a blanco para tu fondo oscuro */
+color: white;         
 background-color: #40414f; 
 border: 1px solid rgba(255,255,255,0.1);
 border-radius: 8px;
@@ -195,4 +215,132 @@ max-height: 200px;
 overflow-y: auto;
 font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 line-height: 1.5;
+outline: none; /* Quitamos el borde naranja/azul por defecto del navegador */
+transition: border-color 0.2s ease, box-shadow 0.2s ease; 
+}
+
+.chat-form textarea:focus {
+    border-color: #1DA1F2; /* Azul Twitter */
+    /* Opcional: un pequeño resplandor para que se vea más moderno */
+    box-shadow: 0 0 0 2px rgba(29, 161, 242, 0.2); 
+}
+
+/* --- Mensajes y Componentes Internos (ChatMessage) --- */
+
+/* Estilos base para los globos de texto */
+.chat-message {
+    padding: 12px 16px;
+    border-radius: 12px;
+    line-height: 1.6;
+    max-width: 90%;
+}
+
+.message-user {
+    align-self: flex-end;
+    background-color: #1DA1F2;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.message-bot {
+    align-self: flex-start;
+    background-color: transparent;
+}    
+
+/* --- SECCIÓN DE FUENTES (RAG) --- */
+
+.sources-wrapper {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 0.85rem;
+}
+
+.sources-summary {
+    cursor: pointer;
+    color: #1DA1F2;
+    font-weight: 500;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+}
+
+.sources-summary:hover {
+    color: #93c5fd;
+}
+
+.sources-content {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.source-card {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 3px solid #1DA1F2;
+}
+
+.source-filename {
+    font-weight: 700;
+    margin-bottom: 5px;
+    color: #1DA1F2;
+    font-size: 0.8rem;
+}
+
+.source-quote {
+    color: #d1d5db;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+/* --- SECCIÓN DE FEEDBACK --- */
+
+.feedback-section {
+    display: flex;
+    gap: 1px;
+    margin-top: 1px;
+    padding-left: 5px;
+    justify-content: right;
+}
+
+.feedback-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+    color: #d1d1d1;
+}
+
+.feedback-btn:hover {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.feedback-btn.active-like {
+    color: #10b981;
+    opacity: 1;
+    transform: scale(1.2);
+}
+
+.feedback-btn.active-dislike {
+    color: #ef4444;
+    opacity: 1;
+    transform: scale(1.2);
+}
+
+.feedback-thanks {
+    font-size: 0.75rem;
+    color: #10b981; /* Verde esmeralda */
+    align-self: center;
+    font-weight: 500;
 }
