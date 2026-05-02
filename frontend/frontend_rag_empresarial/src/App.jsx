@@ -2,29 +2,46 @@ import { useState, useEffect } from "react";
 import { Header } from "./Components/Header";
 import { Sidebar } from "./Components/Sidebar";
 import { Chat } from "./Components/Chat";
+import { Login } from "./Components/Login";
 
-const USER_NAME = "Juan Saldaña"; 
 const API_BASE_URL = "http://localhost:8000";
-const INITIAL_MESSAGE = { 
-    role: "bot", 
-    text: `Hola ${USER_NAME}, soy tu asistente. ¿En qué te puedo ayudar?`,
-    fuentes: [] 
-};
 
 function App() {
-    const [messages, setMessages] = useState([INITIAL_MESSAGE]);
+    const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [conversations, setConversations] = useState([]); // Para el Sidebar
     const [currentConvId, setCurrentConvId] = useState(null); // Trackea el chat activo
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    // 1. Cargar historial del Sidebar al iniciar
     useEffect(() => {
-        fetchConversations();
+        // Al arrancar, comprobamos si hay un token válido guardado
+        const savedToken = localStorage.getItem("token");
+        const savedUser = localStorage.getItem("user");
+
+        if (savedToken && savedUser) {
+            const parsedUser = JSON.parse(savedUser);
+            setUser(parsedUser);
+            // Definimos el mensaje inicial aquí con el nombre real
+            setMessages([{ 
+                role: "bot", 
+                text: `Hola ${parsedUser.user_name}, soy tu asistente. ¿En qué te puedo ayudar?`,
+                fuentes: [] 
+            }]);
+        }
+        setLoading(false);
     }, []);
+
+    // 2. Efecto para cargar conversaciones (SOLO si hay usuario)
+    useEffect(() => {
+        if (user) {
+            fetchConversations();
+        }
+    }, [user]); // Se dispara cuando el usuario hace login
 
     const fetchConversations = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/conversations/${USER_NAME}`);
+            const res = await fetch(`${API_BASE_URL}/conversations/${user.user_name}`);
             const data = await res.json();
             setConversations(data); 
         } catch (err) {
@@ -47,7 +64,7 @@ function App() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    user_name: USER_NAME,
+                    user_name: user.user_name,
                     pregunta: tempInput,
                     conversation_id: currentConvId 
                 })
@@ -115,7 +132,11 @@ function App() {
 
     // Al pulsar "Nueva Conversación" reseteamos el estado local
     const handleNewChat = () => {
-        setMessages([INITIAL_MESSAGE]);
+        setMessages([{ 
+            role: "bot", 
+            text: `Hola ${user?.user_name}, ¿en qué puedo ayudarte ahora?`,
+            fuentes: [] 
+        }]);
         setCurrentConvId(null);
         setInput("");
     };
@@ -133,11 +154,24 @@ function App() {
         }
     };
 
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setUser(null);
+    };
+
+    if (loading) return <div className="loading-screen">Cargando sistema...</div>;
+
+    // Renderizado Condicional
+    if (!user) {
+        return <Login onLoginSuccess={(data) => setUser(data)} />;
+    }
+
     return (
         <div className="app-wrapper">
             <Header
                 title="Asistente de IFP"
-                userName={USER_NAME}
+                userName={user.user_name}
                 userRole="Jefe"
             />
             <div className="layout-container">
