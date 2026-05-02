@@ -173,6 +173,7 @@ function App() {
                 title="Asistente de IFP"
                 userName={user.user_name}
                 userRole="Jefe"
+                onLogout={handleLogout}
             />
             <div className="layout-container">
                 <Sidebar

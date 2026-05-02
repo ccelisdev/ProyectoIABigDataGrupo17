@@ -58,21 +58,56 @@ html, body {
     z-index: 1; /* Asegura que el título esté por encima si hay solapamiento */
 }
 
-.user-info {
+/* Contenedor principal de la derecha */
+.user-area {
+    background-color: #1DA1F2;
     display: flex;
-    flex-direction: column;
-    text-align: right; /* Alineamos el texto a la derecha */
-    /* No necesita margen auto aquí porque el contenedor ya tiene flex-end */
+    align-items: center;
+    gap: 12px;
+    padding: 6px 14px;
+    border-radius: 10px; /* Forma de cápsula */
+    transition: transform 0.2s ease;
 }
 
-.user-info strong {
-    color: #1DA1F2; /* Nombre en azul Twitter para resaltar */
-    font-size: 0.9rem;
+/* Bloque de identidad (Nombre + Rol) */
+.user-details {
+    display: flex;
+    flex-direction: column; /* Apila el nombre sobre el rol */
+    text-align: right;      /* Alinea el texto hacia el botón */
+    line-height: 1.2;
 }
 
-.user-info span {
-    font-size: 0.75rem;
-    color: #9ca3af; /* Color gris para el rol */
+.user-details__name {
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.user-details__role {
+    color: rgba(255, 255, 255, 0.8); /* Blanco suavizado */
+    font-size: 0.7rem;
+}
+
+/* Botón de salida */
+.action-logout {
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease; /* Solo para el crecimiento */
+}
+
+.logout-img {
+    width: 18px;
+    height: 18px;
+    filter: brightness(0) invert(1);
+}
+
+.action-logout:hover {
+    transform: scale(1.18);
 }
 
 /* --- Barra Lateral (Sidebar) --- */
