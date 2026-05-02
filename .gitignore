@@ -23,6 +23,7 @@ datasets/
 *.pickle
 *.npy
 qdrant_db/
+qdrant_local/
 
 # Jupyter Notebooks
 .ipynb_checkpoints
