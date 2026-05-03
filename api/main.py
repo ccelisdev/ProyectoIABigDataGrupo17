@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import datetime, timedelta
 from typing import List, Optional
 from bson import ObjectId
@@ -82,7 +83,19 @@ gestor = GestorVectorial()
 embeddings = MotorEmbeddings().obtener_modelo()
 llm = OllamaLLM(model="llama3:8b")
 vectorstore = Qdrant(client=gestor.obtener_cliente(), collection_name=gestor.nombre_coleccion, embeddings=embeddings)
-template = """Eres un asistente experto. CONTEXTO:\n{context}\n\nPREGUNTA: {question}\nRESPUESTA:"""
+template = """Eres un asistente corporativo. SOLO puedes responder usando la información del CONTEXTO proporcionado.
+REGLAS ESTRICTAS:
+- Si la respuesta NO está en el CONTEXTO, responde exactamente: "No tengo esa información en los documentos disponibles."
+- NO uses tu conocimiento general.
+- NO inventes datos, nombres, números ni fechas.
+- NO respondas preguntas sobre temas externos (deportes, política, etc.).
+
+CONTEXTO:
+{context}
+
+PREGUNTA: {question}
+
+RESPUESTA:"""
 prompt = ChatPromptTemplate.from_template(template)
 cadena = prompt | llm
 
@@ -100,6 +113,7 @@ class ChatResponse(BaseModel):
     respuesta: str
     conversation_id: str
     fuentes: List[dict] = []
+    latencia_ms: int = 0
 
 class FeedbackSchema(BaseModel):
     conversation_id: str
@@ -190,22 +204,24 @@ async def chat_principal(
         current_id = str(res_db.inserted_id)
 
     # --- FILTRO RAG POR ROL ---
-    filtro = {"nivel_acceso": "publico"}
+    filtro = None
     if role == "compliance":
         filtro = {"nivel_acceso": {"$in": ["publico", "compliance"]}}
     elif role == "admin":
-        filtro = None 
+        filtro = None
 
-    docs = vectorstore.similarity_search(pregunta, k=3, filter=filtro)
+    inicio = time.time()
+    docs = vectorstore.similarity_search(pregunta, k=15, filter=filtro)
     contexto_str = "\n\n".join([d.page_content for d in docs])
     ai_answer = cadena.invoke({"context": contexto_str, "question": pregunta})
-    
+    latencia_ms = round((time.time() - inicio) * 1000)
+
     citas = [{"archivo": os.path.basename(d.metadata.get("source", "Doc")), "texto": d.page_content} for d in docs]
 
-    bot_msg = {"role": "bot", "text": ai_answer, "fuentes": citas, "timestamp": datetime.utcnow()}
+    bot_msg = {"role": "bot", "text": ai_answer, "fuentes": citas, "latencia_ms": latencia_ms, "timestamp": datetime.utcnow()}
     await conversations_collection.update_one({"_id": ObjectId(current_id)}, {"$push": {"messages": bot_msg}})
 
-    return {"respuesta": ai_answer, "conversation_id": current_id, "fuentes": citas}
+    return {"respuesta": ai_answer, "conversation_id": current_id, "fuentes": citas, "latencia_ms": latencia_ms}
 
 @app.post("/chat/feedback")
 async def save_feedback(data: FeedbackSchema, current_user: dict = Depends(obtener_usuario_actual)):
