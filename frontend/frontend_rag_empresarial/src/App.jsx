@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Header } from "./Components/Header";
 import { Sidebar } from "./Components/Sidebar";
 import { Chat } from "./Components/Chat";
@@ -9,51 +9,88 @@ const API_BASE_URL = "http://localhost:8000";
 function App() {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
-    const [conversations, setConversations] = useState([]); // Para el Sidebar
-    const [currentConvId, setCurrentConvId] = useState(null); // Trackea el chat activo
+    const [conversations, setConversations] = useState([]); 
+    const [currentConvId, setCurrentConvId] = useState(null); 
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        // Al arrancar, comprobamos si hay un token válido guardado
-        const savedToken = localStorage.getItem("token");
-        const savedUser = localStorage.getItem("user");
+    // Función de logout reutilizablle
+    const handleLogout = useCallback(() => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setUser(null);
+        setMessages([]);
+        setCurrentConvId(null);
+        setConversations([]);
+    }, []);
 
-        if (savedToken && savedUser) {
+    // 1. Recuperar sesión (User + Token) al arrancar
+    useEffect(() => {
+        const savedUser = localStorage.getItem("user");
+        const savedToken = localStorage.getItem("token");
+
+        if (savedUser && savedToken) {
             const parsedUser = JSON.parse(savedUser);
             setUser(parsedUser);
-            // Definimos el mensaje inicial aquí con el nombre real
             setMessages([{ 
                 role: "bot", 
-                text: `Hola ${parsedUser.user_name}, soy tu asistente. ¿En qué te puedo ayudar?`,
+                text: `Sesión recuperada. Hola ${parsedUser.user_name}, ¿en qué puedo ayudarte hoy?`,
                 fuentes: [] 
             }]);
         }
         setLoading(false);
     }, []);
 
-    // 2. Efecto para cargar conversaciones (SOLO si hay usuario)
+    // 2. Cargar historial (Requiere Token)
     useEffect(() => {
-        if (user) {
+        if (user && user.user_name !== "invitado") {
             fetchConversations();
         }
-    }, [user]); // Se dispara cuando el usuario hace login
+    }, [user]);
 
+    // Lógica carga chat
     const fetchConversations = async () => {
+        const token = localStorage.getItem("token");
         try {
-            const res = await fetch(`${API_BASE_URL}/conversations/${user.user_name}`);
+            const res = await fetch(`${API_BASE_URL}/conversations/${user.user_name}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (res.status === 401) return handleLogout(); // Token expirado
             const data = await res.json();
             setConversations(data); 
         } catch (err) {
-            console.error("Error al cargar historial:", err);
+            console.error("Error de red al cargar historial:", err);
         }
     };
 
+    // Lógica Autenticación como trabajador
+    const handleLoginSuccess = (userData) => {
+        // userData debe traer { user_name, role, token }
+        localStorage.setItem("user", JSON.stringify({ 
+            user_name: userData.user_name, 
+            role: userData.role 
+        }));
+        localStorage.setItem("token", userData.token); // Guardamos el token JWT
+        
+        setUser(userData);
+        setCurrentConvId(null);
+    };
+
+    // Lógica Autenticación como invitado
+    const handleGuestAccess = () => {
+        const guestUser = { user_name: "invitado", role: "empleado" };
+        localStorage.setItem("user", JSON.stringify(guestUser));
+        localStorage.setItem("token", "invitado"); // Token simbólico para invitados
+        setUser(guestUser);
+        setCurrentConvId(null);
+    };
+
+    // Logica del chat
     const handleSend = async (e) => {
         if (e) e.preventDefault();
         if (!input.trim()) return;
 
-        // Añadimos mensaje del usuario localmente para feedback inmediato
+        const token = localStorage.getItem("token");
         const userMessage = { role: "user", text: input };
         setMessages(prev => [...prev, userMessage]);
         const tempInput = input;
@@ -62,67 +99,68 @@ function App() {
         try {
             const response = await fetch(`${API_BASE_URL}/chat`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}` // Autenticación en cada pregunta
+                },
                 body: JSON.stringify({
                     user_name: user.user_name,
+                    role: user.role,
                     pregunta: tempInput,
                     conversation_id: currentConvId 
                 })
             });
 
-            const data = await response.json();
+            if (response.status === 401) return handleLogout();
 
-            // Guardamos la respuesta y la lista de fuentes (archivo y texto)
+            const data = await response.json();
             const botMessage = { 
                 role: "bot", 
                 text: data.respuesta,
-                fuentes: data.fuentes || [] // Captura las fuentes reales del backend
+                fuentes: data.fuentes || [] 
             };
             setMessages(prev => [...prev, botMessage]);
 
-            // Si era un chat nuevo, guardamos el ID y refrescamos el sidebar
-            if (!currentConvId) {
+            if (!currentConvId && user.user_name !== "invitado") {
                 setCurrentConvId(data.conversation_id);
                 fetchConversations();
             }
         } catch (error) {
-            console.error("Error conectando con el backend:", error);
+            console.error("Error en RAG:", error);
             setMessages(prev => [...prev, { 
                 role: "bot", 
-                text: "Error de conexión con el servidor.",
+                text: "Error de conexión. Inténtalo de nuevo.",
                 fuentes: [] 
             }]);
         }
     };
 
-    // --- FUNCIÓN DE FEEDBACK ---
+    // Lógica del feedback
     const handleFeedback = async (index, valor) => {
         if (!currentConvId) return;
-
+        const token = localStorage.getItem("token");
         try {
             await fetch(`${API_BASE_URL}/chat/feedback`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     conversation_id: currentConvId,
                     message_index: index,
                     valor: valor
                 })
             });
-
-            // Actualizamos el estado local para que el componente Chat sepa que ya hay feedback
             setMessages(prev => {
                 const newMessages = [...prev];
                 newMessages[index] = { ...newMessages[index], feedback: valor };
                 return newMessages;
             });
-            
-            console.log(`Feedback ${valor} guardado para el mensaje ${index}`);
-        } catch (error) {
-            console.error("Error al enviar el feedback:", error);
-        }
+        } catch (err) { console.error(err); }
     };
 
+    // Logica salto de linea chat con Shift + Enter
     const handleKeyDown = (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -130,49 +168,48 @@ function App() {
         }
     };
 
-    // Al pulsar "Nueva Conversación" reseteamos el estado local
+    // Lógica botón Nuevo Chat
     const handleNewChat = () => {
         setMessages([{ 
             role: "bot", 
-            text: `Hola ${user?.user_name}, ¿en qué puedo ayudarte ahora?`,
+            text: `¿En qué puedo ayudarte con esta nueva consulta, ${user?.user_name}?`,
             fuentes: [] 
         }]);
         setCurrentConvId(null);
         setInput("");
     };
 
-    // Cargar un chat antiguo al hacer clic en el Sidebar
+    // Logica cargar conversación historial
     const loadConversation = async (id) => {
+        const token = localStorage.getItem("token");
         try {
-            const res = await fetch(`${API_BASE_URL}/chat/${id}`);
+            const res = await fetch(`${API_BASE_URL}/chat/${id}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (res.status === 401) return handleLogout();
             const data = await res.json();
-            // data ya contiene los mensajes con sus respectivas fuentes de la DB
             setMessages(data); 
             setCurrentConvId(id);
-        } catch (err) {
-            console.error("Error al cargar la conversación:", err);
-        }
+        } catch (err) { console.error(err); }
     };
 
-    const handleLogout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        setUser(null);
-    };
+    if (loading) return <div className="loading-screen">Validando sesión...</div>;
 
-    if (loading) return <div className="loading-screen">Cargando sistema...</div>;
-
-    // Renderizado Condicional
     if (!user) {
-        return <Login onLoginSuccess={(data) => setUser(data)} />;
+        return (
+            <Login 
+                onLoginSuccess={handleLoginSuccess} 
+                onGuestAccess={handleGuestAccess} 
+            />
+        );
     }
 
     return (
         <div className="app-wrapper">
             <Header
-                title="Asistente de IFP"
+                title="Asistente Corporativo IFP"
                 userName={user.user_name}
-                userRole="Jefe"
+                userRole={user.role}
                 onLogout={handleLogout}
             />
             <div className="layout-container">

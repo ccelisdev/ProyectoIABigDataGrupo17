@@ -1,39 +1,64 @@
-// Components/Login.jsx
 import { useState } from 'react';
 
-export const Login = ({ onLoginSuccess }) => {
-    const [username, setUsername] = useState("");
+export const Login = ({ onLoginSuccess, onGuestAccess }) => {
+    const [email, setEmail] = useState(""); 
     const [password, setPassword] = useState("");
     const [isLogging, setIsLogging] = useState(false);
 
-    // Login como empleado
-    const handleLogin = (e) => {
+    // Función acceso como trabajador (llamada API)
+    const handleLogin = async (e) => {
         e.preventDefault();
         setIsLogging(true);
-        // Simulación de Login Real
-        setTimeout(() => {
-            if (username === "admin" && password === "123") {
-                onLoginSuccess({ user_name: "Admin", role: "Jefe", token: "mock-token" });
+
+        try {
+            const response = await fetch("http://localhost:8000/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                onLoginSuccess(data);
             } else {
-                alert("Credenciales incorrectas");
-                setIsLogging(false);
+                const errorData = await response.json();
+                alert(errorData.detail || "Credenciales incorrectas");
             }
-        }, 1000);
+        } catch (error) {
+            alert("Error de conexión con el servidor");
+        } finally {
+            setIsLogging(false);
+        }
     };
 
-    // Login inmediato como invitado
-    const handleGuest = () => {
-        onLoginSuccess({ user_name: "Invitado", role: "Visitante", token: "guest-token" });
+    // Función botón acceso invitado
+    const handleGuestClick = () => {
+        onGuestAccess();
     };
 
     return (
         <div className="login-container">
             <form className="login-form" onSubmit={handleLogin}>
-                <h2>Acceso Asistente</h2>
-                <input type="text" placeholder="Usuario" onChange={e => setUsername(e.target.value)} />
-                <input type="password" placeholder="Contraseña" onChange={e => setPassword(e.target.value)} />
-                <button type="submit" className="btn-new-chat">Iniciar Sesión</button>
-                <button type="button" onClick={handleGuest} className="btn-new-chat">
+                <h2>Acceso Asistente RAG</h2>
+                <input 
+                    type="email" 
+                    placeholder="Email corporativo" 
+                    value={email}
+                    onChange={e => setEmail(e.target.value)} 
+                    required 
+                />
+                <input 
+                    type="password" 
+                    placeholder="Contraseña" 
+                    value={password}
+                    onChange={e => setPassword(e.target.value)} 
+                    required 
+                />
+                <button type="submit" className="btn-new-chat" disabled={isLogging}>
+                    {isLogging ? "Verificando..." : "Iniciar Sesión"}
+                </button>
+                
+                <button type="button" onClick={handleGuestClick} className="btn-guest">
                     Acceder como Invitado
                 </button>
             </form>
