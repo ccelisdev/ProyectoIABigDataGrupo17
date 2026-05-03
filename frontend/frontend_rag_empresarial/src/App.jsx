@@ -74,6 +74,12 @@ function App() {
         
         setUser(userData);
         setCurrentConvId(null);
+        // Saludo tras login
+        setMessages([{ 
+            role: "bot", 
+            text: `Hola, ${userData.user_name}. ¿En qué te puedo ayudar?`,
+            fuentes: [] 
+        }]);
     };
 
     // Lógica Autenticación como invitado

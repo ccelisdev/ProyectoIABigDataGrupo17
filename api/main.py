@@ -31,7 +31,7 @@ SECRET_KEY = os.getenv("JWT_SECRET")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480 # 8 horas de jornada laboral
 
-app = FastAPI(title="API RAG Empresarial - Grupo 17", version="1.2.0")
+app = FastAPI(title="API RAG Empresarial - Grupo 17", version="1.2.0",)
 
 # OAuth2 esquema para extraer el token del header Authorization: Bearer <token>
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")

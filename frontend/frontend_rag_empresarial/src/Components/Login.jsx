@@ -58,7 +58,7 @@ export const Login = ({ onLoginSuccess, onGuestAccess }) => {
                     {isLogging ? "Verificando..." : "Iniciar Sesión"}
                 </button>
                 
-                <button type="button" onClick={handleGuestClick} className="btn-guest">
+                <button type="button" onClick={handleGuestClick} className="btn-new-chat">
                     Acceder como Invitado
                 </button>
             </form>
