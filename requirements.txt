@@ -12,10 +12,23 @@ langchain-community
 langchain-ollama
 python-dotenv
 
-# Base de datos y PDFs (Katherin)
+# Base de datos (Katherin)
+sqlalchemy
+pymysql
+
+# Almacenamiento vectorial
 qdrant-client==1.9.0
+
+# Seguridad (Katherin)
+passlib==1.7.4
+bcrypt==4.0.1
+
+# Ingesta de documentos
 pdfplumber
 pypdf
+pandas
+openpyxl
+python-docx
 
 # Base de datos NoSQL (Conversaciones)
 motor

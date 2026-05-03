@@ -11,26 +11,58 @@ function App() {
     const [input, setInput] = useState("");
     const [conversations, setConversations] = useState([]); // Para el Sidebar
     const [currentConvId, setCurrentConvId] = useState(null); // Trackea el chat activo
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState(null); // Estado de usuario logueado
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        // Al arrancar, comprobamos si hay un token válido guardado
-        const savedToken = localStorage.getItem("token");
-        const savedUser = localStorage.getItem("user");
+  /**
+   * Recuperar usuario persistido
+   */
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
 
-        if (savedToken && savedUser) {
-            const parsedUser = JSON.parse(savedUser);
-            setUser(parsedUser);
-            // Definimos el mensaje inicial aquí con el nombre real
-            setMessages([{ 
-                role: "bot", 
-                text: `Hola ${parsedUser.user_name}, soy tu asistente. ¿En qué te puedo ayudar?`,
-                fuentes: [] 
-            }]);
-        }
-        setLoading(false);
-    }, []);
+        setMessages([{
+            role: "bot",
+            text: `Hola ${parsedUser.user_name}, soy tu asistente RAG - Grupo 17. ¿Cómo puedo ayudar?`,
+            fuentes: []
+        }]);
+    }
+    setLoading(false);
+  }, []);
+
+  /**
+   * LOGIN CORRECTO - Login.jsx devuelve YA el modelo adaptado:
+   * { user_name, role }
+   */
+  const handleLoginSuccess = (userData) => {
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(userData);
+    setCurrentConvId(null);
+  };
+
+  /**
+   * ACCESO COMO INVITADO - Sin backend, rol limitado
+   */
+  const handleGuestAccess = () => {
+    const guestUser = {
+      user_name: "invitado",
+      role: "empleado",
+    };
+    localStorage.setItem("user", JSON.stringify(guestUser));
+    setUser(guestUser);
+    setCurrentConvId(null);
+  };
+
+  /**
+   * LOGOUT - Solo frontend (arquitectura stateless)
+   */
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    setUser(null);
+    setCurrentConvId(null);
+  };
 
     // 2. Efecto para cargar conversaciones (SOLO si hay usuario)
     useEffect(() => {
@@ -65,6 +97,7 @@ function App() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     user_name: user.user_name,
+                    role: user.role,
                     pregunta: tempInput,
                     conversation_id: currentConvId 
                 })
@@ -154,17 +187,14 @@ function App() {
         }
     };
 
-    const handleLogout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        setUser(null);
-    };
-
     if (loading) return <div className="loading-screen">Cargando sistema...</div>;
 
     // Renderizado Condicional
     if (!user) {
-        return <Login onLoginSuccess={(data) => setUser(data)} />;
+        return (<Login 
+                onLoginSuccess={handleLoginSuccess} 
+                onGuestAccess={handleGuestAccess}
+                />);
     }
 
     return (
@@ -172,7 +202,7 @@ function App() {
             <Header
                 title="Asistente de IFP"
                 userName={user.user_name}
-                userRole="Jefe"
+                userRole={user.role}
                 onLogout={handleLogout}
             />
             <div className="layout-container">
