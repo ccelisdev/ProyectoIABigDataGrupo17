@@ -203,15 +203,52 @@ async def chat_principal(
         res_db = await conversations_collection.insert_one(new_chat)
         current_id = str(res_db.inserted_id)
 
-    # --- FILTRO RAG POR ROL ---
-    filtro = None
-    if role == "compliance":
-        filtro = {"nivel_acceso": {"$in": ["publico", "compliance"]}}
-    elif role == "admin":
-        filtro = None
+    # 2. PROCESO RAG (Filtrado por Rol)
+
+    filtro_rag = None
+    
+    if role == "admin":
+        filtro_rag = None  # Acceso total, sin filtros
+    elif role == "compliance" or role == "finanzas":
+        # Puede ver lo público y lo de finanzas
+        filtro_rag = {
+            "must": [
+                {
+                    "key": "metadata.nivel_acceso", # Ruta al campo en Qdrant
+                    "match": {"any": ["publico", "finanzas"]}
+                }
+            ]
+        }
+    elif role == "rrhh":
+        # Puede ver lo público y lo de RRHH
+        filtro_rag = {
+            "must": [
+                {
+                    "key": "metadata.nivel_acceso",
+                    "match": {"any": ["publico", "rrhh"]}
+                }
+            ]
+        }
+    else:
+        # Rol 'empleado' o 'invitado': solo contenido público
+        filtro_rag = {
+            "must": [
+                {
+                    "key": "metadata.nivel_acceso",
+                    "match": {"value": "publico"}
+                }
+            ]
+        }
 
     inicio = time.time()
-    docs = vectorstore.similarity_search(pregunta, k=15, filter=filtro)
+
+    # Realizamos la búsqueda con el filtro aplicado
+    docs = vectorstore.similarity_search(
+        pregunta,
+        k=3,
+        filter=filtro_rag # Pasamos el filtro aquí
+    )
+
     contexto_str = "\n\n".join([d.page_content for d in docs])
     ai_answer = cadena.invoke({"context": contexto_str, "question": pregunta})
     latencia_ms = round((time.time() - inicio) * 1000)
