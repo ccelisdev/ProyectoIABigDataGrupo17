@@ -24,6 +24,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.vectorstores import Qdrant
 from src.database import GestorVectorial
 from src.embeddings import MotorEmbeddings
+from qdrant_client.http.models import Filter, FieldCondition, MatchValue, MatchAny
 
 # --- CONFIGURACIÓN ---
 load_dotenv()
@@ -83,18 +84,18 @@ gestor = GestorVectorial()
 embeddings = MotorEmbeddings().obtener_modelo()
 llm = OllamaLLM(model="llama3:8b")
 vectorstore = Qdrant(client=gestor.obtener_cliente(), collection_name=gestor.nombre_coleccion, embeddings=embeddings)
-template = """Eres un asistente corporativo. SOLO puedes responder usando la información del CONTEXTO proporcionado.
-REGLAS ESTRICTAS:
-- Si la respuesta NO está en el CONTEXTO, responde exactamente: "No tengo esa información en los documentos disponibles."
-- NO uses tu conocimiento general.
-- NO inventes datos, nombres, números ni fechas.
-- NO respondas preguntas sobre temas externos (deportes, política, etc.).
+template = """Eres un asistente corporativo. Responde en español y de forma concisa.
+
+INSTRUCCIONES:
+- Responde SOLO con información que aparezca literalmente en el CONTEXTO.
+- Si la información no está en el CONTEXTO, responde exactamente: "No tengo esa información en los documentos disponibles."
+- Está PROHIBIDO usar conocimiento propio, inventar datos o hacer suposiciones.
+- Si es un saludo, responde en una sola frase corta.
 
 CONTEXTO:
 {context}
 
 PREGUNTA: {question}
-
 RESPUESTA:"""
 prompt = ChatPromptTemplate.from_template(template)
 cadena = prompt | llm
@@ -210,42 +211,25 @@ async def chat_principal(
     if role == "admin":
         filtro_rag = None  # Acceso total, sin filtros
     elif role == "compliance" or role == "finanzas":
-        # Puede ver lo público y lo de finanzas
-        filtro_rag = {
-            "must": [
-                {
-                    "key": "metadata.nivel_acceso", # Ruta al campo en Qdrant
-                    "match": {"any": ["publico", "finanzas"]}
-                }
-            ]
-        }
+        filtro_rag = Filter(must=[
+            FieldCondition(key="metadata.nivel_acceso", match=MatchAny(any=["publico", "finanzas"]))
+        ])
     elif role == "rrhh":
-        # Puede ver lo público y lo de RRHH
-        filtro_rag = {
-            "must": [
-                {
-                    "key": "metadata.nivel_acceso",
-                    "match": {"any": ["publico", "rrhh"]}
-                }
-            ]
-        }
+        filtro_rag = Filter(must=[
+            FieldCondition(key="metadata.nivel_acceso", match=MatchAny(any=["publico", "rrhh"]))
+        ])
     else:
         # Rol 'empleado' o 'invitado': solo contenido público
-        filtro_rag = {
-            "must": [
-                {
-                    "key": "metadata.nivel_acceso",
-                    "match": {"value": "publico"}
-                }
-            ]
-        }
+        filtro_rag = Filter(must=[
+            FieldCondition(key="metadata.nivel_acceso", match=MatchValue(value="publico"))
+        ])
 
     inicio = time.time()
 
     # Realizamos la búsqueda con el filtro aplicado
     docs = vectorstore.similarity_search(
         pregunta,
-        k=3,
+        k=5,
         filter=filtro_rag # Pasamos el filtro aquí
     )
 

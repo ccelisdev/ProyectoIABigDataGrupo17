@@ -10,8 +10,8 @@ HEADERS = {
     "Authorization": "Bearer invitado"
 }
 
-ARCHIVO_ENTRADA = "pruebas_entrada.xlsx"
-ARCHIVO_SALIDA  = "pruebas_resultados.xlsx"
+ARCHIVO_ENTRADA = "pruebas_entrada_acme.xlsx"
+ARCHIVO_SALIDA  = "pruebas_resultados_acme.xlsx"
 
 FRASES_RECHAZO = ["no está", "no tengo", "no encuentro", "no dispongo", "no se menciona", "no puedo", "no está en el documento"]
 
